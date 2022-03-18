@@ -1,21 +1,30 @@
-import React, { useState } from "react";
-import { useEffect } from "react";
-import { getEpisodes } from "../../utils/api-utils";
-import { ReactComponent as PlayButton } from "../../assets/SVG/play2.svg";
+import { useState, useEffect, useCallback } from "react";
 
+import { getEpisodes } from "../../utils/api-utils";
+import { Box, Container, List, Typography } from "@mui/material";
 import EpisodeModal from "./EpisodeModal";
+import EpisodeItem from "./EpisodeItem";
+import Loader from "../ui/loader";
+import ErrorAlert from "../ui/errorAlert";
+import AppPagination from "../ui/appPagination";
 
 function EpisodeList({
   show,
   selectedEpisodePlaying,
   setSelectedEpisodePlaying,
+  selectedEpisode,
+  setSelectedEpisode,
 }) {
-  const [episodes, setEpisodes] = useState(null);
-  const [selectedShow, setSelectedShow] = useState({});
-  const [selectedEpisode, setSelectedEpisode] = useState();
-  const [firstTenEpisodes, setFirstTenEpisodes] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [currentShow, setCurrentShow] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [episodesPerPage, setEpisodesPerPage] = useState(5);
+  const [currentPage, setCurrentPage] = useState(1);
 
+  /**
+   * Getting episodes
+   */
   useEffect(() => {
     let isCancelled = false;
 
@@ -23,62 +32,100 @@ function EpisodeList({
       setIsLoading(true);
       getEpisodes(show.feed)
         .then((data) => {
-          setSelectedShow({ ...data.channel });
-          setEpisodes([...data.channel.episodes]);
-          // temp limiting data
-          setFirstTenEpisodes([...data.channel.episodes].slice(0, 9));
+          setCurrentShow(data.channel);
+          setCurrentPage(1);
           setIsLoading(false);
         })
-        .catch((error) => console.log(error));
+        .catch((error) => {
+          setError(error.msg);
+          setIsLoading(false);
+        });
     }
+
     // cleanup
     return () => {
       isCancelled = true;
     };
   }, [show]);
 
-  if (isLoading) {
-    return <div>Loading Episodes...</div>;
+  /**
+   *  Pagination Logic
+   */
+  const updatePageCount = useCallback(() => {
+    return Math.ceil(currentShow.episodes.length / episodesPerPage);
+  }, [currentShow, episodesPerPage]);
+
+  const paginateEpisodes = (arr) => {
+    const firstId = (currentPage - 1) * episodesPerPage;
+    const lastId = currentPage * episodesPerPage;
+    return arr.slice(firstId, lastId);
+  };
+
+  if (isLoading || !currentShow) {
+    return <Loader />;
   }
-  function showEpisodeHandler(episode) {
+
+  function playEpisodeHandler(episode) {
+    setSelectedEpisodePlaying(episode);
+  }
+
+  function closeEpisodeModalHandler() {
     if (selectedEpisode) {
       setSelectedEpisode(null);
     }
   }
 
+  function showEpisodeModalHandler(episode) {
+    setModalOpen(true);
+    setSelectedEpisode(episode);
+  }
+
   return (
-    <div className="right-pane">
-      <div className="episode-list-container">
-        <h2>{show.title}</h2>
-        <p className="show-description">{selectedShow.description}</p>
-        <div className="episode-list">
-          {firstTenEpisodes.map((episode) => (
-            <button
-              className="episode-item"
-              key={episode.guid["#text"]}
-              onClick={() => setSelectedEpisode(episode)}
-            >
-              <PlayButton />
-              {episode.title}
-            </button>
-          ))}
-        </div>
-        <div>
-          {selectedEpisode && (
-            <EpisodeModal
-              episode={selectedEpisode}
-              image={selectedShow.image}
-              setSelectedEpisodePlaying={setSelectedEpisodePlaying}
-              onConfirm={showEpisodeHandler}
+    <Container maxWidth="md">
+      {error && <ErrorAlert error={error} />}
+      <Box sx={{ display: "flex", flexDirection: "column" }}>
+        <Typography
+          gutterBottom
+          variant="h4"
+          component={"h1"}
+          sx={{ alignSelf: { sm: "normal", xs: "center" }, pt: "1.3rem" }}
+        >
+          {show.title}
+        </Typography>
+        <Typography gutterBottom variant="body2" component={"p"}>
+          {currentShow.description}
+        </Typography>
+      </Box>
+      <Box>
+        <List sx={{ mt: 3 }} aria-label="episode list">
+          {paginateEpisodes(currentShow.episodes).map((episode) => (
+            <EpisodeItem
+              key={episode.guid.text}
+              episode={episode}
+              selectedEpisodePlaying={selectedEpisodePlaying}
+              showEpisodeModalHandler={showEpisodeModalHandler}
+              playEpisodeHandler={playEpisodeHandler}
             />
-            // <EpisodeDetails
-            //   episode={selectedEpisode}
-            //   setSelectedEpisodePlaying={setSelectedEpisodePlaying}
-            // />
-          )}
-        </div>
-      </div>
-    </div>
+          ))}
+        </List>
+      </Box>
+      {selectedEpisode && (
+        <EpisodeModal
+          episode={selectedEpisode}
+          image={currentShow.image}
+          setSelectedEpisodePlaying={setSelectedEpisodePlaying}
+          onClose={closeEpisodeModalHandler}
+          open={modalOpen}
+        />
+      )}
+      <Box sx={{ mb: "2rem" }}>
+        <AppPagination
+          page={currentPage}
+          setPage={setCurrentPage}
+          pageCount={updatePageCount}
+        />
+      </Box>
+    </Container>
   );
 }
 

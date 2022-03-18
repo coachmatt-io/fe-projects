@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import ShowList from "./components/show/ShowList";
 import EpisodeList from "./components/episode/EpisodeList";
-import Header from "./components/header";
+import Header from "./components/ui/header";
+import Loader from "./components/ui/loader";
 
 const PODCASTS = [
   {
@@ -27,10 +28,13 @@ const PODCASTS = [
 ];
 
 function App() {
+  const [sideBarOpen, setSideBarOpen] = useState(true);
   const [shows, setShows] = useState([]);
-  const [selectedShow, setSelectedShow] = useState({});
+  const [selectedShow, setSelectedShow] = useState(null);
   const [selectedEpisodePlaying, setSelectedEpisodePlaying] = useState(null);
+  const [selectedEpisode, setSelectedEpisode] = useState();
   const [isLoading, setIsLoading] = useState(false);
+
   useEffect(() => {
     if (!PODCASTS) {
       async function getShows() {
@@ -52,35 +56,39 @@ function App() {
   }, []);
 
   if (isLoading) {
-    return <div>Loading Shows</div>;
+    return <Loader />;
   }
 
-  function handleSelectShow(id) {
-    if (shows && !isLoading) {
-      return shows[id];
-    }
-  }
-  let show;
-  if (selectedShow) {
-    show = shows.find((show) => show.id === selectedShow);
-  }
+  const handleSelectedShow = (showId) => {
+    const show = shows.find((show) => show.id === showId);
+    setSelectedShow(show);
+  };
   return (
     <>
-      <Header selectedEpisodePlaying={selectedEpisodePlaying} />
-      <div className="App">
-        <div className="show-list-container">
-          <ShowList shows={shows} selectShow={setSelectedShow} />
-        </div>
-        {selectedShow && show && (
-          <div className="episodelist">
-            <EpisodeList
-              show={show}
-              selectedEpisodePlaying={selectedEpisodePlaying}
-              setSelectedEpisodePlaying={setSelectedEpisodePlaying}
-            />
-          </div>
-        )}
-      </div>
+      <Header
+        selectedEpisodePlaying={selectedEpisodePlaying}
+        setSideBarOpen={setSideBarOpen}
+        sideBarOpen={sideBarOpen}
+        setSelectedEpisode={setSelectedEpisode}
+      />
+
+      <ShowList
+        shows={shows}
+        selectedShow={selectedShow}
+        handleSelectedShow={handleSelectedShow}
+        sideBarOpen={sideBarOpen}
+        setSideBarOpen={setSideBarOpen}
+      />
+      {selectedShow && (
+        <EpisodeList
+          show={selectedShow}
+          handleSelectedShow={handleSelectedShow}
+          selectedEpisodePlaying={selectedEpisodePlaying}
+          setSelectedEpisodePlaying={setSelectedEpisodePlaying}
+          setSelectedEpisode={setSelectedEpisode}
+          selectedEpisode={selectedEpisode}
+        />
+      )}
     </>
   );
 }

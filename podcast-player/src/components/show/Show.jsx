@@ -1,13 +1,22 @@
-import React from "react";
+import ArrowRight from "@mui/icons-material/ArrowRight";
+import { ListItemButton } from "@mui/material";
 
-import { ReactComponent as PlayButton } from "../../assets/SVG/circle-right.svg";
-
-function Show({ id, title, selectShow }) {
+function Show({ id, title, handleSelectedShow, selectedShow, setSideBarOpen }) {
+  function selectShowHandler(id) {
+    handleSelectedShow(id);
+    setSideBarOpen(false);
+  }
   return (
-    <button className="show-item" onClick={() => selectShow(id)}>
+    <ListItemButton
+      role={"link"}
+      component={"li"}
+      onClick={() => selectShowHandler(id)}
+      selected={selectedShow === id}
+      sx={{ pl: ".2rem", pr: "2rem" }}
+    >
+      <ArrowRight fontSize="large" />
       {title}
-      <PlayButton />
-    </button>
+    </ListItemButton>
   );
 }
 
